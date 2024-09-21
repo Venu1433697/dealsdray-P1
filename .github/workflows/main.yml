@@ -1,41 +1,59 @@
-name: Build Client
+name: Deploy Client and Server to EC2
 
-# Trigger the workflow on push to the main branch or on pull requests.
 on:
   push:
     branches:
-      - main
+      - main  # Triggers deployment on push to main branch
 
-# Define the jobs to run
 jobs:
-  build:
-    # Environment the job runs on (ubuntu-latest for Linux)
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Check out the code from the repository
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+    # Checkout repository code
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      # Set up Node.js to the specified version (you can change this version)
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '22.x' # Use the Node version that suits your project
+    # Set up Node.js
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '22.x'
 
-      # Install dependencies
-      - name: Install Dependencies
-        working-directory: ./client
-        run: npm install
+    # Install dependencies and build the client
+    - name: Build client
+      working-directory: ./client
+      run: |
+        npm install
+        npm run build
 
-      # Run the build command
-      - name: Build the Client
-        working-directory: ./client
-        run: npm run build
+    # Install dependencies and build the server
+    - name: Install server dependencies
+      working-directory: ./server
+      run: npm install
 
-      # Save the build output as an artifact (optional)
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: client-build
-          path: ./client/build # Or ./dist for Vue/Angular
+    # Deploy to EC2 server via SSH
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@v0.1.4
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        port: 22
+        script: |
+          # Navigate to the app directory on EC2
+          cd /path/to/your/project
+
+          # Pull the latest changes from the repository
+          git pull origin main
+
+          # Install server dependencies on EC2
+          cd server
+          npm install
+          pm2 restart all  # Restart Node.js server using PM2 (if you're using it)
+
+          # Navigate to the client directory
+          cd ../client
+
+          # Copy the client build files to the appropriate directory (e.g., /var/www/html for Nginx)
+          sudo cp -r build/* /var/www/html/
