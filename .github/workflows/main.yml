@@ -39,7 +39,15 @@ jobs:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USER }}
         key: ${{ secrets.EC2_SSH_KEY }}
-        port: 22
+        port: ${{ secrets.EC2_SSH_PORT }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+          
+          
+          
         script: |
           # Navigate to the app directory on EC2
           cd /home/ec2-user/expense-client-server
@@ -56,4 +64,13 @@ jobs:
           cd ../client
 
           # Copy the client build files to the appropriate directory (e.g., /var/www/html for Nginx)
-          sudo cp -r build/* /var/www/html/
+          
+          sudo scp -i ~/.ssh/id_rsa -P ${{ secrets.SSH_PORT }} build/build.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ec2-user/expense-client-server
+          ssh -i ~/.ssh/id_rsa -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            cd /home/ec2-user/expense-client-server
+            rm -rf *.html *.js *.css static *.json *.ico
+            tar -xzf build.tar.gz
+            mv build/* .
+            rm -rf build build.tar.gz
+          EOF
+
