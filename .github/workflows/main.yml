@@ -40,14 +40,6 @@ jobs:
         username: ${{ secrets.EC2_USER }}
         key: ${{ secrets.EC2_SSH_KEY }}
         port: 22
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-          
-          
-          
         script: |
           # Navigate to the app directory on EC2
           cd /home/ec2-user/expense-client-server
